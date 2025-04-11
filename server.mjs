@@ -13,6 +13,7 @@ const TEMP_DIR = "temp/";
 const OUTPUT_DIR = "latex_files/";
 const ALLOWED_ORIGIN = "https://latex-extr.netlify.app/";
 
+// Middleware
 app.use(
   cors({
     origin: ALLOWED_ORIGIN,
@@ -22,8 +23,18 @@ app.use(
 );
 app.use(express.json());
 
-const upload = multer({ dest: TEMP_DIR });
+// Configure multer to preserve file extension
+const storage = multer.diskStorage({
+  destination: TEMP_DIR,
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const baseName = path.basename(file.originalname, ext);
+    cb(null, `${baseName}-${Date.now()}${ext}`); // e.g., SampleQuestion-169876543210.docx
+  },
+});
+const upload = multer({ storage });
 
+// Ensure directories exist
 async function ensureDirectories() {
   await Promise.all([
     fs.mkdir(TEMP_DIR, { recursive: true }),
@@ -31,14 +42,16 @@ async function ensureDirectories() {
   ]);
 }
 
+// Convert Word to LaTeX using Pandoc
 async function convertWordToLatex(wordFile, latexFile) {
-  const command = `pandoc "${wordFile}" -o "${latexFile}" --to=latex`;
+  const command = `pandoc "${wordFile}" -f docx -o "${latexFile}" --to=latex`;
   const { stderr } = await execPromise(command);
   if (stderr && stderr.includes("error")) {
     throw new Error(`Failed to convert ${wordFile} to LaTeX: ${stderr}`);
   }
 }
 
+// Extract math expressions from LaTeX content
 function extractMathExpressions(latexContent) {
   const patterns = [
     /\\\(.*?\\\)/g,
@@ -60,6 +73,7 @@ function extractMathExpressions(latexContent) {
   return mathExpressions;
 }
 
+// Clean LaTeX syntax
 function cleanLatexSyntax(latexExpression) {
   return latexExpression
     .replace(/%.*$/gm, "")
@@ -68,6 +82,7 @@ function cleanLatexSyntax(latexExpression) {
     .trim();
 }
 
+// FileHandler class
 class FileHandler {
   constructor(file) {
     if (!file || !file.path || !file.originalname) {
@@ -111,6 +126,7 @@ class FileHandler {
   }
 }
 
+// Utility functions
 async function cleanupFiles(files) {
   await Promise.all(
     files.map((file) =>
@@ -130,8 +146,8 @@ function sendFileResponse(res, filePath, fileName) {
   res.sendFile(filePath, { root: "." });
 }
 
+// Main route
 app.post("/convert", upload.single("file"), async (req, res) => {
-  console.log("Received POST request");
   if (req.method !== "POST") {
     return res.status(405).send("Method Not Allowed");
   }
@@ -159,13 +175,8 @@ app.post("/convert", upload.single("file"), async (req, res) => {
   }
 });
 
-app.get("/convert", (req, res) => {
-  console.log("Received GET request");
-  res.send("Server is running");
-});
-
+// Start server
 const PORT = process.env.PORT || 3000;
-console.log(PORT);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
