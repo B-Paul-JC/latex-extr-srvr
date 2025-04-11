@@ -11,7 +11,7 @@ const execPromise = promisify(exec);
 const app = express();
 const TEMP_DIR = "temp/";
 const OUTPUT_DIR = "latex_files/";
-const ALLOWED_ORIGIN = "https://latex-extr.netlify.app/";
+const ALLOWED_ORIGIN = "https://latex-extr.netlify.app";
 
 // Middleware
 app.use(
