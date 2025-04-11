@@ -131,6 +131,7 @@ function sendFileResponse(res, filePath, fileName) {
 }
 
 app.post("/convert", upload.single("file"), async (req, res) => {
+  console.log("Received POST request");
   if (req.method !== "POST") {
     return res.status(405).send("Method Not Allowed");
   }
